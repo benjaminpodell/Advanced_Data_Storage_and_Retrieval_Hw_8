@@ -1,143 +1,142 @@
-# import dependencies 
-import datetime as dt
-import numpy as np
-import pandas as pd
-import datetime as dt
+# Importing dependencies 
 import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
 from flask import Flask, jsonify
+import numpy as np
+import pandas as pd
+import datetime as dt
 
+# Variable that stores created engine referencing the `hawaii.sqlite` database file from the resources folder
+engine = create_engine("sqlite:///Resources/hawaii.sqlite")
 
-#################################################
-# Database Setup
-#################################################
-engine = create_engine("sqlite:///Hawaii.sqlite")
-# reflect the database into a new model
+# Variable reflecting an existing database into a new model
 Base = automap_base()
-# reflect the tables
+
+# Reflects the tables
 Base.prepare(engine, reflect=True)
 
-# Save reference to the table
+# Variables storing the Reflect Database into object relational mapping classes
+Measurement = Base.classes.measurement
 Station = Base.classes.station
-Measurements = Base.classes.measurements
 
-# Create our session (link) from Python to the DB
+# Creates session link from Python to the database
 session = Session(engine)
 
-#################################################
-# Flask Setup
-#################################################
+# Setting up flask
 app = Flask(__name__)
 
-#################################################
-# Flask Routes
-#################################################
+# Building First Homepage flask route that lists all other available routes
 @app.route("/")
-def welcome():
-    """List all available api routes."""
+def homepage():
     return (
-        f"Available Routes:<br/>"
+        f"Here is a list of all available api routes!<br/>"
+        f"------------------------------------------------"
         f"<br/>"
+        
+        f"Previous year rain totals from every station<br/>"
         f"/api/v1.0/precipitation<br/>"
-        f"- List of prior year rain totals from all stations<br/>"
         f"<br/>"
+
+        f"Station numbers along with their respective names<br/>"
         f"/api/v1.0/stations<br/>"
-        f"- List of Station numbers and names<br/>"
         f"<br/>"
+        
+        f"Previous year temperatures across all stations<br/>"
         f"/api/v1.0/tobs<br/>"
-        f"- List of prior year temperatures from all stations<br/>"
         f"<br/>"
+        
+        f"From a start date this calculates the min, avg, and max temperature of all dates >= to the start date<br/>"
         f"/api/v1.0/start<br/>"
-        f"- When given the start date (YYYY-MM-DD), calculates the MIN/AVG/MAX temperature for all dates greater than and equal to the start date<br/>"
         f"<br/>"
-        f"/api/v1.0/start/end<br/>"
-        f"- When given the start and the end date (YYYY-MM-DD), calculate the MIN/AVG/MAX temperature for dates between the start and end date inclusive<br/>"
-
+        
+        f"From a start and an end date this calculates min, avg, and max temperature of all dates between the start and end date<br/>"
+        f"/api/v1.0/start/end<br/>"   
     )
-#########################################################################################
 
+# Builds the second flask route that opens the precipitation information    
 @app.route("/api/v1.0/precipitation")
 def precipitation():
-    """Return a list of rain fall for prior year"""
-#    * Query for the dates and precipitation observations from the last year.
-#           * Convert the query results to a Dictionary using `date` as the key and `prcp` as the value.
-#           * Return the json representation of your dictionary.
-    last_date = session.query(Measurements.date).order_by(Measurements.date.desc()).first()
-    last_year = dt.date(2017, 8, 23) - dt.timedelta(days=365)
-    rain = session.query(Measurements.date, Measurements.prcp).\
-        filter(Measurements.date > last_year).\
-        order_by(Measurements.date).all()
+    
+    # Variables that build a query for the dates and precipitation observations from the last year
+    lowest_date = session.query(Measurement.date).order_by(Measurement.date.desc()).first()
+    previous_year = dt.date(2017, 8, 23) - dt.timedelta(days=365)
+    rain_measurement = session.query(Measurement.date, Measurement.prcp).filter(Measurement.date > previous_year).order_by(Measurement.date).all()
 
-# Create a list of dicts with `date` and `prcp` as the keys and values
-    rain_totals = []
-    for result in rain:
-        row = {}
-        row["date"] = rain[0]
-        row["prcp"] = rain[1]
-        rain_totals.append(row)
+    # For loop that creates a list of dictionarys with `date` and `prcp` as the keys and values
+    rain_holder = []
+    for x in rain_measurement:
+        capture = {}
+        capture["date"] = rain_measurement[0]
+        capture["prcp"] = rain_measurement[1]
+        rain_holder.append(capture)
+    
+    # Returns the json representation of the dictionary
+    return jsonify(rain_holder)
 
-    return jsonify(rain_totals)
-
-#########################################################################################
+# Builds the third flask route that opens all of the station information specifically the name and station id
 @app.route("/api/v1.0/stations")
 def stations():
-    stations_query = session.query(Station.name, Station.station)
-    stations = pd.read_sql(stations_query.statement, stations_query.session.bind)
-    return jsonify(stations.to_dict())
-#########################################################################################
+    active_station = session.query(Station.name, Station.station)
+    station_reader = pd.read_sql(active_station.statement, active_station.session.bind)
+    return jsonify(station_reader.to_dict())
+
+# Builds the fourth flask route that opens all of the 'tobs' information
 @app.route("/api/v1.0/tobs")
 def tobs():
-    """Return a list of temperatures for prior year"""
-#    * Query for the dates and temperature observations from the last year.
-#           * Convert the query results to a Dictionary using `date` as the key and `tobs` as the value.
-#           * Return the json representation of your dictionary.
-    last_date = session.query(Measurements.date).order_by(Measurements.date.desc()).first()
-    last_year = dt.date(2017, 8, 23) - dt.timedelta(days=365)
-    temperature = session.query(Measurements.date, Measurements.tobs).\
-        filter(Measurements.date > last_year).\
-        order_by(Measurements.date).all()
 
-# Create a list of dicts with `date` and `tobs` as the keys and values
-    temperature_totals = []
-    for result in temperature:
-        row = {}
-        row["date"] = temperature[0]
-        row["tobs"] = temperature[1]
-        temperature_totals.append(row)
+    # Variables that build a query for the dates and temperature observations from the last year
+    lowest_date1 = session.query(Measurement.date).order_by(Measurement.date.desc()).first()
+    previous_year1 = dt.date(2017, 8, 23) - dt.timedelta(days=365)
+    temp_measurement = session.query(Measurement.date, Measurement.tobs).filter(Measurement.date > previous_year1).order_by(Measurement.date).all()
 
-    return jsonify(temperature_totals)
-#########################################################################################
+    # For loop that creates a list of dictionarys with `date` and `tobs` as the keys and values
+    temperature_list = []
+    for x in temp_measurement:
+        capture = {}
+        capture["date"] = temp_measurement[0]
+        capture["tobs"] = temp_measurement[1]
+        temperature_list.append(capture)
+    
+    # Returns the json representation of the dictionary    
+    return jsonify(temperature_list)
+
+# Builds the fifth flask route that opens all of the 'start' information 
 @app.route("/api/v1.0/<start>")
-def trip1(start):
+def Start(start):
 
- # go back one year from start date and go to end of data for Min/Avg/Max temp   
-    start_date= dt.datetime.strptime(start, '%Y-%m-%d')
-    last_year = dt.timedelta(days=365)
-    start = start_date-last_year
-    end =  dt.date(2017, 8, 23)
-    trip_data = session.query(func.min(Measurements.tobs), func.avg(Measurements.tobs), func.max(Measurements.tobs)).\
-        filter(Measurements.date >= start).filter(Measurements.date <= end).all()
-    trip = list(np.ravel(trip_data))
-    return jsonify(trip)
+    # Using datetime function .strptime to pull the very first starting time to subtract from the previous year which then querys the min, avg, and max tobs data by filtering based on when the data began and finished
+    # The 'begin_date' variable is not parsing through the '%Y-%m-%d' and I'm not sure why...?
+    begin_date = dt.datetime.strptime(start, '%Y-%m-%d')
+    previous_year = dt.timedelta(days=365)
+    
+    start = begin_date - previous_year
+    finish =  dt.date(2017, 8, 23)
+    
+    start_data = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).filter(Measurement.date >= start).filter(Measurement.date <= finish).all()
+    list_start_data = list(np.ravel(start_data))
+    
+    return jsonify(list_start_data)
 
-#########################################################################################
+# Builds the sixth flask route that opens all of the 'start' to 'end' information
 @app.route("/api/v1.0/<start>/<end>")
-def trip2(start,end):
+def Start_End(start_2,end):
+    
 
-  # go back one year from start/end date and get Min/Avg/Max temp     
-    start_date= dt.datetime.strptime(start, '%Y-%m-%d')
-    end_date= dt.datetime.strptime(end,'%Y-%m-%d')
-    last_year = dt.timedelta(days=365)
-    start = start_date-last_year
-    end = end_date-last_year
-    trip_data = session.query(func.min(Measurements.tobs), func.avg(Measurements.tobs), func.max(Measurements.tobs)).\
-        filter(Measurements.date >= start).filter(Measurements.date <= end).all()
-    trip = list(np.ravel(trip_data))
-    return jsonify(trip)
-
-#########################################################################################
+    # Using datetime function .strptime to pull the very first starting time to subtract from the previous year and ending time to subtract from the previous year which then querys the min, avg, and max tobs data by filtering based on when the data began and finished
+    # The 'begin_date' and 'finish_date_2 variables are not parsing through the '%Y-%m-%d' and I'm not sure why...?
+    begin_date_2 = dt.datetime.strptime(start_2, '%Y%m-%d')
+    finish_date_2 = dt.datetime.strptime(end,'%Y-%m-%d')
+    previous_year_2 = dt.timedelta(days=365)
+    
+    start_2 = begin_date_2 - previous_year_2
+    end = finish_date_2 - previous_year_2
+    
+    start_end_data = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).filter(Measurement.date >= start_2).filter(Measurement.date <= end).all()
+    list_start_end_data = list(np.ravel(start_end_data))
+    
+    return jsonify(list_start_end_data)
 
 if __name__ == "__main__":
     app.run(debug=True)
